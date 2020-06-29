@@ -1,0 +1,117 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Verdana, Arial, sans-serif;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #dddddd;
+        }
+
+        #t01 {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #f1f1c1;
+        }
+
+        #t01 tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+
+        #t01 tr:nth-child(odd) {
+            background-color: #fff;
+        }
+
+        #t01 th {
+            color: black;
+            background-color: white;
+        }
+
+        #t01 td#FAILED {
+            background-color: red;
+            color: white;
+        }
+
+        #t01 td#PASSED {
+            background-color: green;
+            color: white;
+        }
+    </style>
+
+    <title>{{ data.title }} Video Quality Metrics Report</title>
+
+
+</head>
+
+<body>
+
+    <h1>Video QC Report for media_id {{ data.title }} </h1>
+    <p><b>Source File:</b> {{ data.source_file }}</p>
+    <p><b>Transcode File:</b> {{ data.transcode_file }}</p>
+
+    <H2>Transcode QC Tests</H2>
+    <table id="t01">
+        <tr>
+            <th>Result</th>
+            <th>Category</th>
+            <th>Rule</th>
+            <th>Data</th>
+        </tr>
+        {% for test in data.test_data %}
+        <tr>
+            {% if test.result == "FAILED" %}
+            <td id="FAILED">{{ test.result }} </td>
+            {% else %}
+            <td id="PASSED">{{ test.result }} </td>
+            {% endif %}
+            <td>{{ test.category }} </td>
+            <td>{{ test.rule }} </td>
+            <td>{{ test.inputs }} </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <H2>Program VMAF Score</H2>
+    <H3> {{ data.vmaf_score }}</H3>
+
+    <H2> VMAF Graph</H2>
+    <p><b>Total Run Time: </b> {{ data.duration }}</p>
+    <img src={{ data.vmaf_graph }}>
+
+    <p><a href={{ data.full_vmaf_json }}>Json data of full VMAF results</a></p>
+
+    <!-- <H2> Lowest VMAF Score</H2>
+    <p><b>Time:</b> {{ data.low_frame_time }}</p>
+    <p><b>Score:</b> {{ data.low_frame_vmaf }}</p>
+
+    <H3> Lowest VMAF Frame (Source)</H3>
+    <img src={{ data.worst_frame_source_path }}>
+
+    <H3> Lowest VMAF Frame (Transcode)</H3>
+    <img src={{ data.worst_frame_transcode_path }}>
+
+
+    <H3> Lowest VMAF Frame (Diff between Source and Transcode)</H3>
+    <img src={{ data.worst_frame_diff_path }}> -->
+
+    <H2>Frames with Low VMAF Scores</H2>
+    {% for low_frame in data.low_frames %}
+    <H3> {{ low_frame.index }}. Time: {{ low_frame.frame_time }} Frame VMAF Score: {{ low_frame.frame_vmaf }} </H3>
+    <p>Image on left is source; center image is transcode; right image is difference</p>
+    <img src={{ low_frame.frame_grab }}>
+    {% endfor %}
+</body>
+
+</html>
