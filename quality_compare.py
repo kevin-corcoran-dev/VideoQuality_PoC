@@ -255,32 +255,36 @@ def plot_vmaf_graph(output_path, frame_nums, frame_scores, source_duration, lowe
     plt.savefig(output_path)
 
 
-def plot_vmaf_vs_bitrate(output_path, metric_name, reference_bitrate, reference_vmaf, bitrates, variants):
+def plot_multi_vmaf_timegraph(output_path, frame_nums, baseline_frame_scores, variant_list, source_duration, fps):
 
-    bitrate_vmafs = [variant[metric_name] for variant in variants]
+    timecode = Timecode(fps, '00:00:00:00')
 
-    if metric_name == 'ssim':
-        lower = min(bitrate_vmafs) - 0.01
-        upper = 0.01 + max(bitrate_vmafs)
-    else:
-        lower = round(min(bitrate_vmafs) - 1)
-        upper = round(1 + max(bitrate_vmafs))
+    title = " Time vs. " + "VMAF" + " (2-second GOPs)"
+    plt.suptitle(title, fontsize=14, color='blue')
+    plt.title("Red line is VMAF/time of existing VOD transcode (4sec GOPs).  Blue line is qualiyt/time for 2sec GOPs",
+              fontsize=7, color='black')
 
-    # round our range to even multiples of 5
-    # base = 5
-    # lower = base * round(lower/base)
-    # upper = base * (1 + round(upper/base))
+    upper = max(baseline_frame_scores)
+    lower = min(baseline_frame_scores)
 
-    title = "Bitrate vs. " + metric_name + " for 2-second GOPS"
-    plt.title(title, fontsize=14, color='blue')
-    plt.plot(bitrates, bitrate_vmafs)
-    # plt.plot([reference_bitrate, reference_bitrate, 0], [
-    #         0, reference_vmaf, 100], lw=1, dashes=[2, 2])
-    plt.axvline(reference_bitrate, color='r')
-    plt.axhline(reference_vmaf, color='r')
+    multi_frame_scores = [variant['vmaf_frame_scores']
+                          for variant in variant_list]
 
-    ticlabels = [str(bitrate) for bitrate in bitrates]
-    plt.xticks(bitrates, ticlabels, rotation='vertical')
+    for idx, frame_scores in enumerate(multi_frame_scores):
+        upper = max(upper, max(frame_scores))
+        lower = min(lower, min(frame_scores))
+        plt.plot(frame_nums, frame_scores, str(1 - (0.1 * (1 + idx))))
+
+    plt.plot(frame_nums, baseline_frame_scores, color='r')
+
+    # generate major tics based on evenly divided time
+
+    chosen_frames = np.linspace(0, len(frame_nums) - 1, 20)
+    ticframes = [frame_nums[int(i)] for i in chosen_frames]
+    ticlabels = [timecode.tc_to_string(
+        *timecode.frames_to_tc(ticframe)) for ticframe in ticframes]
+
+    plt.xticks(ticframes, ticlabels, rotation='vertical')
 
     ax = plt.axes()
     # style = dict(size=10, color='gray')
@@ -288,11 +292,106 @@ def plot_vmaf_vs_bitrate(output_path, metric_name, reference_bitrate, reference_
     # for idx, lowval in enumerate(lowest_values):
     #     ax.text(lowval, frame_scores[lowval] - 5, str(idx + 1), **style)
 
-    # ax.set_xticks(ticframes, minor=True)
+    ax.set_xticks(ticframes, minor=True)
 
-    # for index, label in enumerate(ax.xaxis.get_ticklabels()):
-    #     if index % label_mod != 0:
-    #         label.set_visible(False)
+    ax.grid()
+
+    plt.ylabel('vmaf score')
+    plt.ylim(lower, upper)
+    plt.xlabel('time')
+    plt.subplots_adjust(bottom=0.3)
+    plt.gcf().set_size_inches(15, 5)
+    plt.savefig(output_path)
+    plt.clf()
+
+
+def plot_three_vmaf_timegraph(output_path, frame_nums, baseline_frame_scores, variant_list, target_bitrate, recommended_bitrate, source_duration, fps):
+
+    timecode = Timecode(fps, '00:00:00:00')
+
+    baseline_label = "Existing " + \
+        str(target_bitrate) + "bps VOD Transcode (4sec GOP)"
+    identical_label = "Identical " + \
+        str(target_bitrate) + "bps but with 2sec GOP"
+    recommended_label = str(
+        target_bitrate) + "bps transcode 2 sec GOP that should match VOD quality"
+
+    # sift through all of the test variants and find the variant that matches the reference bitrate:
+    same_bitrate_variant = [variant['vmaf_frame_scores']
+                            for variant in variant_list if variant['bitrate'] == target_bitrate][0]
+    recommended_bitrate_variant = [variant['vmaf_frame_scores']
+                                   for variant in variant_list if variant['bitrate'] == recommended_bitrate][0]
+
+    title = " VOD Transcode (4sec GOP) VMAF vs. Matching Bitrate (2sec GOP) Over Time"
+    plt.title(title, fontsize=14, color='blue')
+
+    upper = max(baseline_frame_scores)
+    lower = min(baseline_frame_scores)
+    plt.plot(frame_nums, baseline_frame_scores, color='r',
+             label=baseline_label)
+
+    upper = max(upper, max(same_bitrate_variant))
+    lower = min(lower, min(same_bitrate_variant))
+    plt.plot(frame_nums, same_bitrate_variant, color='y',
+             label=identical_label)
+
+    upper = max(upper, max(recommended_bitrate_variant))
+    lower = min(lower, min(recommended_bitrate_variant))
+    plt.plot(frame_nums, recommended_bitrate_variant, color='g',
+             label=recommended_label)
+
+    # generate major tics based on evenly divided time
+
+    chosen_frames = np.linspace(0, len(frame_nums) - 1, 20)
+    ticframes = [frame_nums[int(i)] for i in chosen_frames]
+    ticlabels = [timecode.tc_to_string(
+        *timecode.frames_to_tc(ticframe)) for ticframe in ticframes]
+
+    plt.xticks(ticframes, ticlabels, rotation='vertical')
+
+    ax = plt.axes()
+    # style = dict(size=10, color='gray')
+    # # label the valleys
+    # for idx, lowval in enumerate(lowest_values):
+    #     ax.text(lowval, frame_scores[lowval] - 5, str(idx + 1), **style)
+
+    ax.set_xticks(ticframes, minor=True)
+
+    ax.grid()
+
+    plt.legend(handles=[line2], loc='lower right')
+
+    plt.ylabel('vmaf score')
+    plt.ylim(lower, upper)
+    plt.xlabel('time')
+    plt.subplots_adjust(bottom=0.3)
+    plt.gcf().set_size_inches(15, 5)
+    plt.savefig(output_path)
+    plt.clf()
+
+
+def plot_vmaf_vs_bitrate(output_path, template_name, metric_name, reference_bitrate, reference_vmaf, bitrates, variants):
+
+    bitrate_vmafs = [variant[metric_name] for variant in variants]
+
+    if metric_name == 'ssim':
+        lower = min(bitrate_vmafs) - 0.01
+        upper = min(1.0, 0.01 + max(bitrate_vmafs))
+    else:
+        lower = round(min(bitrate_vmafs) - 1)
+        upper = round(1 + max(bitrate_vmafs))
+
+    title = template_name + " Bitrate vs. " + metric_name + " (2-second GOPs)"
+    plt.suptitle(title, fontsize=14, color='blue')
+    plt.title("Red cross is quality/bitrate for existing VOD transcode (4sec GOPs).  Blue line is quality/bitrate for 2sec GOPs", fontsize=7, color='black')
+    plt.plot(bitrates, bitrate_vmafs)
+    plt.axvline(reference_bitrate, color='r')
+    plt.axhline(reference_vmaf, color='r')
+
+    ticlabels = [str(bitrate) for bitrate in bitrates]
+    plt.xticks(bitrates, ticlabels, rotation='vertical')
+
+    ax = plt.axes()
 
     ax.grid()
 
@@ -342,6 +441,16 @@ def ffmpeg_transcode(source_path, video_template, output_path):
         print(result.stderr)
 
     result.check_returncode()
+
+
+def find_first_metric_to_meet_or_exceed(compare_bitrate, metric, test_variants):
+    variants_meet_or_exceed = [(variant['bitrate'], variant[metric])
+                               for variant in test_variants if variant[metric] > compare_bitrate]
+
+    if len(variants_meet_or_exceed) == 0:
+        return "none", "none"
+    first_pair = sorted(variants_meet_or_exceed, key=lambda x: x[0])[0]
+    return first_pair[0], round(first_pair[1], 3)
 
 
 def create_quality_report(source_directory, results_directory, subsample):
@@ -405,8 +514,6 @@ def create_quality_report(source_directory, results_directory, subsample):
                 out_dir, base_file_name + "_" + template_name + ".mp4")
             json_path = os.path.join(
                 out_dir, base_file_name + "_" + template_name + ".json")
-
-            image_path = base_file_name + "vmaf.png"
 
             base_template = template['template']
 
@@ -500,16 +607,33 @@ def create_quality_report(source_directory, results_directory, subsample):
 
                 template_results['test_variants'].append(test_variant)
 
+            # find the lowest VMAF, SSIM, and PSNR to match VMAF/SSIM/PSNR of VOD transcode
+            template_results['first_acceptable_vmaf_bitrate'], template_results['first_acceptable_vmaf'] = find_first_metric_to_meet_or_exceed(
+                template_results['vod_vmaf_score'], "vmaf", template_results['test_variants'])
+            template_results['first_acceptable_ssim_bitrate'], template_results['first_acceptable_ssim'] = find_first_metric_to_meet_or_exceed(
+                template_results['vod_ssim_score'], "ssim", template_results['test_variants'])
+            template_results['first_acceptable_psnr_bitrate'], template_results['first_acceptable_psnr'] = find_first_metric_to_meet_or_exceed(
+                template_results['vod_psnr_score'], "psnr", template_results['test_variants'])
+
+            # get the name for our charts
             template_results['bitrate_vs_vmaf_plot'] = os.path.join(out_dir, base_file_name + "_" + template_name +
                                                                     "_vmaf_vs_bitrate.png")
-
             template_results['bitrate_vs_ssim_plot'] = os.path.join(out_dir, base_file_name + "_" + template_name +
                                                                     "_ssim_vs_bitrate.png")
 
-            plot_vmaf_vs_bitrate(template_results['bitrate_vs_vmaf_plot'], "vmaf", template['target_bitrate'],
-                                 template_results['vod_vmaf_score'], alternate_bitrate_targets, template_results['test_variants'])
+            template_results['multi_bitrate_time_plot'] = os.path.join(out_dir, base_file_name + "_" + template_name +
+                                                                       "_multi_VMAF_vs_time.png")
+            template_results['three_bitrate_time_plot'] = os.path.join(out_dir, base_file_name + "_" + template_name +
+                                                                       "_triple_VMAF_vs_time.png")
 
-            plot_vmaf_vs_bitrate(template_results['bitrate_vs_ssim_plot'], "ssim", template['target_bitrate'],
+            # Generate the charts
+            plot_multi_vmaf_timegraph(template_results['multi_bitrate_time_plot'], template_results['vod_vmaf_frames'],
+                                      template_results['vod_vmaf_frame_scores'], template_results['test_variants'], duration, asset_report['fps'])
+            plot_three_vmaf_timegraph(template_results['three_bitrate_time_plot'], template_results['vod_vmaf_frames'],
+                                      template_results['vod_vmaf_frame_scores'], template_results['test_variants'], template['target_bitrate'], template_results['first_acceptable_vmaf_bitrate'], duration, asset_report['fps'])
+            plot_vmaf_vs_bitrate(template_results['bitrate_vs_vmaf_plot'],  template_name, "vmaf", template['target_bitrate'],
+                                 template_results['vod_vmaf_score'], alternate_bitrate_targets, template_results['test_variants'])
+            plot_vmaf_vs_bitrate(template_results['bitrate_vs_ssim_plot'], template_name, "ssim", template['target_bitrate'],
                                  template_results['vod_ssim_score'], alternate_bitrate_targets, template_results['test_variants'])
 
             asset_report['variants'].append(template_results)

@@ -60,6 +60,7 @@
     <h1>Video QC Report for media_id {{ data.title }} </h1>
 
     {% for test_asset in data.test_assets %}
+    <hr>
     <H2>Asset: {{ test_asset.filepath }}.</H2>
     <H3>Source Attributes</H3>
     <table id="t01">
@@ -101,21 +102,36 @@
             <td>{{ variant.template.target_width }}:{{ variant.template.target_height }}</td>
         </tr>
         <tr>
-            <td>VMAF Score for exisitng Tubi VOD Profile (4 sec GOP):</td>
+            <td>VMAF Score for exisitng Tubi VOD Profile (4sec GOP):</td>
             <td>{{ variant.vod_vmaf_score }}</td>
+        </tr>
+
+        <tr>
+            <td> Closest VMAF/bitrate match (2sec GOP):</td>
+            <td>bitrate: {{ variant.first_acceptable_vmaf_bitrate }} VMAF: {{ variant.first_acceptable_vmaf }}</td>
         </tr>
         <tr>
             <td>SSIM Score for exisitng Tubi VOD Profile (4 sec GOP):</td>
             <td>{{ variant.vod_ssim_score }}</td>
         </tr>
         <tr>
+            <td> Closest SSIM/bitrate match (2sec GOP):</td>
+            <td>bitrate: {{ variant.first_acceptable_ssim_bitrate }} SSIM: {{ variant.first_acceptable_ssim }}</td>
+        </tr>
+        <tr>
             <td>PSNR Score for exisitng Tubi VOD Profile (4 sec GOP):</td>
             <td>{{ variant.vod_psnr_score }}</td>
         </tr>
+        <tr>
+            <td> Closest PSNR/bitrate match (2sec GOP):</td>
+            <td>bitrate: {{ variant.first_acceptable_psnr_bitrate }} PSNR: {{ variant.first_acceptable_psnr }}</td>
+        </tr>
     </table>
+    <p></p>
     <img src={{ variant.bitrate_vs_vmaf_plot }}> <img src={{ variant.bitrate_vs_ssim_plot }}>
-    {% endfor %}
-    {% endfor %}
+    <img src={{ variant.multi_bitrate_time_plot }}>
+    <img src={{ variant.three_bitrate_time_plot }}>
+    {% endfor %} {% endfor %}
 </body>
 
 </html>
