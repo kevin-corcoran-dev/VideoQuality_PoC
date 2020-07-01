@@ -17,12 +17,13 @@ import numpy as np
 from scipy.signal import find_peaks
 
 import titan
+import ffmpeg_funcs
 
 
 tubi_video_templates = "Tubi_Templates.json"
 
 
-def ffmpeg_grab_thumbnail_strip(source_path, output_dir, duration, steps):
+def ffmpeg_grab_thumbnail_strip(source_path, output_dir, duration, fps, steps):
 
     if not os.path.isdir(results_directory):
         raise Exception(
@@ -33,32 +34,21 @@ def ffmpeg_grab_thumbnail_strip(source_path, output_dir, duration, steps):
 
     output_file = os.path.join(output_dir, output_file + "_thumbnails.jpg")
 
-    frame_interval = duration/float(steps)
+    times = np.linspace(0, duration - 0.1, steps)
+    frame_nums = [int(time * fps) for time in times]
 
-    inputs = ["ffmpeg", "-y"]
-    filter_complex = ""
-    output_pins = ""
-    for step in range(0, steps):
-        inputs.append("-ss")
-        inputs.append(str(step * frame_interval))
-        inputs.append("-i")
-        inputs.append(source_path)
-        inputs.append("-t")
-        inputs.append(str(0.1 + (step * frame_interval)))
-        filter_complex += "[0:v]setpts=PTS-STARTPTS,scale=214:120[" + \
-            str(step) + "];"
-        output_pins += "[" + str(step) + "]"
+    output_frames = ffmpeg_funcs.ffmpeg_grab_frames(
+        source_path, frame_nums, output_dir,  214, 120, "frame_", fps)
 
-    args = inputs + ["-filter_complex", filter_complex + output_pins +
-                     "hstack=inputs=" + str(steps), "-vsync", "0", "-frames:v", "1", output_file]
+    # ffmpeg_funcs.ffmpeg_grab_frames() returns relative paths -- let's turn them into absolut
+    output_frames = [os.path.join(output_dir, output_frame)
+                     for output_frame in output_frames]
 
-    result = subprocess.run(
-        args,  shell=False, encoding='utf-8', capture_output=True)
+    ffmpeg_funcs.ffmpeg_htile_images(output_frames, output_file)
 
-    if result.returncode:
-        print(result.stderr)
-
-    result.check_returncode()
+    # we've got the strip, let's delete the component files
+    for file in output_frames:
+        os.remove(file)
 
     return output_file
 
@@ -140,7 +130,7 @@ def ffmpeg_run_vmaf_full(source, transcode, log_path, dest_fps, target_width, ta
         raise Exception('log_path must end in .json: {}'.format(log_path))
 
     args = ["ffmpeg", "-i", source, "-i", transcode, "-an",
-            "-filter_complex", "[0:v]fps=" + str(dest_fps) + ",scale=" + str(target_width) + ":" + str(target_height) + ",setpts=PTS-STARTPTS[source];[1:v]setpts=PTS-STARTPTS[trancoded];[source][trancoded]libvmaf=log_fmt=json:log_path=" + log_path + ":n_subsample=" + str(subsample), "-f", "NULL", " -"]
+            "-filter_complex", "[0:v]fps=" + str(dest_fps) + ",scale=" + str(target_width) + ":" + str(target_height) + ",setpts=PTS-STARTPTS[source];[1:v]setpts=PTS-STARTPTS[trancoded];[source][trancoded]libvmaf=log_fmt=json:psnr=1:ssim=1:log_path=" + log_path + ":n_subsample=" + str(subsample), "-f", "NULL", " -"]
 
     result = subprocess.run(
         args,  shell=False, encoding='utf-8', capture_output=True)
@@ -176,7 +166,43 @@ def parse_vmaf_json(json_path):
             vmav_frame_times.append(frame['frameNum'])
             vmaf_frames.append(frame['metrics']['vmaf'])
 
-        return vmaf_score, zip(vmav_frame_times, vmaf_frames)
+        return vmaf_score, vmav_frame_times, vmaf_frames
+
+
+def parse_psnr_from_vmaf_json(json_path):
+
+    psnr_frame_scores = []
+    psnr_frame_nums = []
+    psnr_score = 0
+
+    with open(json_path, 'r') as f:
+        vmaf_json = json.load(f)
+
+        psnr_score = vmaf_json['PSNR score']
+
+        for frame in vmaf_json['frames']:
+            psnr_frame_nums.append(frame['frameNum'])
+            psnr_frame_scores.append(frame['metrics']['psnr'])
+
+        return psnr_score, psnr_frame_nums, psnr_frame_scores
+
+
+def parse_ssim_from_vmaf_json(json_path):
+
+    ssim_frame_scores = []
+    ssim_frame_nums = []
+    ssim_score = 0
+
+    with open(json_path, 'r') as f:
+        vmaf_json = json.load(f)
+
+        ssim_score = vmaf_json['SSIM score']
+
+        for frame in vmaf_json['frames']:
+            ssim_frame_nums.append(frame['frameNum'])
+            ssim_frame_scores.append(frame['metrics']['ssim'])
+
+        return ssim_score, ssim_frame_nums, ssim_frame_scores
 
 
 def plot_vmaf_graph(output_path, frame_nums, frame_scores, source_duration, lowest_values, timecode):
@@ -229,10 +255,60 @@ def plot_vmaf_graph(output_path, frame_nums, frame_scores, source_duration, lowe
     plt.savefig(output_path)
 
 
+def plot_vmaf_vs_bitrate(output_path, metric_name, reference_bitrate, reference_vmaf, bitrates, variants):
+
+    bitrate_vmafs = [variant[metric_name] for variant in variants]
+
+    if metric_name == 'ssim':
+        lower = min(bitrate_vmafs) - 0.01
+        upper = 0.01 + max(bitrate_vmafs)
+    else:
+        lower = round(min(bitrate_vmafs) - 1)
+        upper = round(1 + max(bitrate_vmafs))
+
+    # round our range to even multiples of 5
+    # base = 5
+    # lower = base * round(lower/base)
+    # upper = base * (1 + round(upper/base))
+
+    title = "Bitrate vs. " + metric_name + " for 2-second GOPS"
+    plt.title(title, fontsize=14, color='blue')
+    plt.plot(bitrates, bitrate_vmafs)
+    # plt.plot([reference_bitrate, reference_bitrate, 0], [
+    #         0, reference_vmaf, 100], lw=1, dashes=[2, 2])
+    plt.axvline(reference_bitrate, color='r')
+    plt.axhline(reference_vmaf, color='r')
+
+    ticlabels = [str(bitrate) for bitrate in bitrates]
+    plt.xticks(bitrates, ticlabels, rotation='vertical')
+
+    ax = plt.axes()
+    # style = dict(size=10, color='gray')
+    # # label the valleys
+    # for idx, lowval in enumerate(lowest_values):
+    #     ax.text(lowval, frame_scores[lowval] - 5, str(idx + 1), **style)
+
+    # ax.set_xticks(ticframes, minor=True)
+
+    # for index, label in enumerate(ax.xaxis.get_ticklabels()):
+    #     if index % label_mod != 0:
+    #         label.set_visible(False)
+
+    ax.grid()
+
+    plt.ylabel(metric_name + " score")
+    plt.ylim(lower, upper)
+    plt.xlabel('bitrate')
+    plt.subplots_adjust(bottom=0.2)
+    plt.gcf().set_size_inches(7, 5)
+    plt.savefig(output_path)
+    plt.clf()
+
+
 def write_html_report(report_data, report_path):
     jinja_loader = FileSystemLoader('templates')
     jinja_env = Environment(loader=jinja_loader)
-    jinja_temp = jinja_env.get_template("template.html")
+    jinja_temp = jinja_env.get_template("bitrate_comparison.html")
     output = jinja_temp.render(data=report_data)
     print(output)
     with open(report_path, "w") as f:
@@ -247,7 +323,10 @@ def write_dict_to_json(dict, output_path):
 
 
 def generate_alternate_bitrates(original_target):
-    return list(range(original_target - 200000, original_target + 600000, 100000))
+    # return list(range(original_target - 200000, original_target + 600000, 100000))
+    new_targets = np.linspace(int(original_target/2),
+                              int(original_target * 2), 10)
+    return [int(target) for target in new_targets]
 
 
 def ffmpeg_transcode(source_path, video_template, output_path):
@@ -262,6 +341,8 @@ def ffmpeg_transcode(source_path, video_template, output_path):
     if result.returncode:
         print(result.stderr)
 
+    result.check_returncode()
+
 
 def create_quality_report(source_directory, results_directory, subsample):
 
@@ -271,7 +352,11 @@ def create_quality_report(source_directory, results_directory, subsample):
     with open('tubi_video_templates.json') as f:
         templates = json.load(f)
 
+    report_data['test_assets'] = []
     for filename in os.listdir(source_directory):
+
+        # if not filename == "Bloomberg.mp4":
+        #     continue
 
         if not filename.endswith(".mov") and not filename.endswith(".mp4"):
             continue
@@ -281,11 +366,16 @@ def create_quality_report(source_directory, results_directory, subsample):
         asset_report = {}
         asset_report['filepath'] = filename
 
-        fps = ffprobe_get_framerate(abs_source_path)
+        asset_report['fps'] = fps = ffprobe_get_framerate(abs_source_path)
         source_dimensions = ffprobe_get_frame_size(abs_source_path)
-        duration = ffprobe_get_video_duration(abs_source_path)
-        deinterlace = ffmpeg_get_deinterlace(abs_source_path, duration)
-        sample_aspect_ratio = ffprobe_get_sample_aspect_ratio(abs_source_path)
+        asset_report['source_width'] = source_dimensions['width']
+        asset_report['source_height'] = source_dimensions['height']
+        asset_report['duration'] = duration = ffprobe_get_video_duration(
+            abs_source_path)
+        asset_report['deinterlace'] = deinterlace = ffmpeg_get_deinterlace(
+            abs_source_path, duration)
+        asset_report['SAR'] = sample_aspect_ratio = ffprobe_get_sample_aspect_ratio(
+            abs_source_path)
 
         base_file_name = os.path.splitext(os.path.split(filename)[1])[0]
 
@@ -295,20 +385,30 @@ def create_quality_report(source_directory, results_directory, subsample):
 
         # grab the thumbnails
         asset_report['thumbnails_strip'] = ffmpeg_grab_thumbnail_strip(
-            abs_source_path, out_dir, duration, 4)
+            abs_source_path, out_dir, duration, fps, 5)
 
+        asset_report['variants'] = []
         for template in templates:
-            template_name = template['description']
+
+            target_width = template['target_width']
+            target_height = template['target_height']
+            target_fps = titan.generate_fps_float(fps)
+
+            # no uprezzing
+            if target_width > source_dimensions['width'] and target_height > source_dimensions['height']:
+                continue
+
+            template_results = {}
+            template_results['template_name'] = template_name = template['description']
+            template_results['template'] = template
             output_path = os.path.join(
                 out_dir, base_file_name + "_" + template_name + ".mp4")
             json_path = os.path.join(
                 out_dir, base_file_name + "_" + template_name + ".json")
 
-            base_template = template['template']
+            image_path = base_file_name + "vmaf.png"
 
-            target_width = template['target_width']
-            target_height = template['target_height']
-            target_fps = titan.generate_fps_float(fps)
+            base_template = template['template']
 
             key_frame_placement = titan.generate_key_frame_placement(
                 target_fps)
@@ -330,15 +430,29 @@ def create_quality_report(source_directory, results_directory, subsample):
 
             # save time if we have this file from a previous run -- for debugging
             if os.path.exists(json_path):
-                score, frames = parse_vmaf_json(json_path)
+                score, frame_nums, frame_vmafs = parse_vmaf_json(json_path)
             else:
-                score, frames = ffmpeg_run_vmaf_full(
+                score, frame_nums, frame_vmafs = ffmpeg_run_vmaf_full(
                     abs_source_path, output_path, json_path, target_fps, target_width, target_height, subsample)
+
+            template_results['vod_vmaf_score'] = round(score, 3)
+            template_results['vod_vmaf_frames'] = frame_nums
+            template_results['vod_vmaf_frame_scores'] = frame_vmafs
+
+            # same thing now for SSIM
+            ssim, _, frame_ssim_scores = parse_ssim_from_vmaf_json(json_path)
+            template_results['vod_ssim_score'] = round(ssim, 3)
+            template_results['vod_ssim_frame_scores'] = frame_ssim_scores
+
+            # same thing now for PSNR
+            psnr, _, frame_psnr_scores = parse_psnr_from_vmaf_json(json_path)
+            template_results['vod_psnr_score'] = round(psnr, 3)
+            template_results['vod_psnr_frame_scores'] = frame_psnr_scores
 
             alternate_bitrate_targets = generate_alternate_bitrates(
                 template['target_bitrate'])
 
-            test_variants = []
+            template_results['test_variants'] = []
             for alternate_bitrate_target in alternate_bitrate_targets:
                 test_variant = {}
 
@@ -358,8 +472,8 @@ def create_quality_report(source_directory, results_directory, subsample):
                     original_bitrate_target_k, altnernate_bitrate_target_k)
 
                 original_buffersize = re.search(
-                    r'(?:-bufsize )([0-9.]*k)', test_template, re.S)[0]
-                alternate_buffer_target = "-bufsize " + str(
+                    r'(?:bufsize )([0-9.]*k)', test_template, re.S)[0]
+                alternate_buffer_target = "bufsize " + str(
                     int(0.8 * alternate_bitrate_target/1000)) + "k"
 
                 test_template = test_template.replace(
@@ -372,32 +486,54 @@ def create_quality_report(source_directory, results_directory, subsample):
                         abs_source_path, test_template, test_variant['output_path'])
 
                 if os.path.exists(test_variant['vmaf_json_path']):
-                    test_variant['vmaf_score'], test_variant['vmaf_frames'] = parse_vmaf_json(
+                    test_variant['vmaf'], test_variant['vmaf_frame_times'], test_variant['vmaf_frame_scores'] = parse_vmaf_json(
                         test_variant['vmaf_json_path'])
                 else:
-                    test_variant['vmaf_score'], test_variant['vmaf_frames'] = ffmpeg_run_vmaf_full(
+                    test_variant['vmaf'], test_variant['vmaf_frame_times'], test_variant['vmaf_frame_scores'] = ffmpeg_run_vmaf_full(
                         abs_source_path, test_variant['output_path'], test_variant['vmaf_json_path'], target_fps, target_width, target_height, subsample)
 
-                test_variants.append(test_variant)
+                test_variant['ssim'], _, test_variant['ssim_frame_scores'] = parse_ssim_from_vmaf_json(
+                    test_variant['vmaf_json_path'])
 
-                # report_data['vmaf_score'] = score
-                # report_data['vmaf_graph'] = image_path
-                # duration_tc = timecode.frames_to_tc(
-                #     timecode.float_to_tc(source_video_duration))
-                # report_data['duration'] = timecode.tc_to_string(*duration_tc)
-                # report_data['full_vmaf_json'] = json_path
-                # report_data['low_frames'] = low_frames
+                test_variant['psnr'], _, test_variant['psnr_frame_scores'] = parse_psnr_from_vmaf_json(
+                    test_variant['vmaf_json_path'])
 
-                # # write the unformatted json version of our results
-                # write_dict_to_json(report_data, os.path.join(
-                #     results_directory, media_id + "_QC.json"))
-                # # write the formatted html version of our results
+                template_results['test_variants'].append(test_variant)
+
+            template_results['bitrate_vs_vmaf_plot'] = os.path.join(out_dir, base_file_name + "_" + template_name +
+                                                                    "_vmaf_vs_bitrate.png")
+
+            template_results['bitrate_vs_ssim_plot'] = os.path.join(out_dir, base_file_name + "_" + template_name +
+                                                                    "_ssim_vs_bitrate.png")
+
+            plot_vmaf_vs_bitrate(template_results['bitrate_vs_vmaf_plot'], "vmaf", template['target_bitrate'],
+                                 template_results['vod_vmaf_score'], alternate_bitrate_targets, template_results['test_variants'])
+
+            plot_vmaf_vs_bitrate(template_results['bitrate_vs_ssim_plot'], "ssim", template['target_bitrate'],
+                                 template_results['vod_ssim_score'], alternate_bitrate_targets, template_results['test_variants'])
+
+            asset_report['variants'].append(template_results)
+
+        report_data['test_assets'].append(asset_report)
+
+        # report_data['vmaf_score'] = score
+        # report_data['vmaf_graph'] = image_path
+        # duration_tc = timecode.frames_to_tc(
+        #     timecode.float_to_tc(source_video_duration))
+        # report_data['duration'] = timecode.tc_to_string(*duration_tc)
+        # report_data['full_vmaf_json'] = json_path
+        # report_data['low_frames'] = low_frames
+
+        # # write the unformatted json version of our results
+        # write_dict_to_json(report_data, os.path.join(
+        #     results_directory, media_id + "_QC.json"))
+        # # write the formatted html version of our results
 
     write_dict_to_json(report_data, os.path.join(
         results_directory, base_file_name + "_bitrate_tests.json"))
 
     write_html_report(report_data, os.path.join(
-        results_directory, "quality.html"))
+        results_directory, "bitrate_comparison.html"))
 
 
 if __name__ == "__main__":

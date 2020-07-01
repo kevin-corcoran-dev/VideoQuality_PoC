@@ -82,29 +82,5 @@
     "target_height": 720,
     "name": "2400k_720p_ott_hd",
     "target_bitrate": 2400000
-  },
-  {
-    "active": true,
-    "template": "-an -pix_fmt yuv420p -flags +loop -crf 1 -vcodec libx264 -partitions +parti8x8+parti4x4+partp8x8+partb8x8 -me_method umh -subq 8 -me_range 16 {{ key_frame_placement }} -trellis 0 -sc_threshold 0 -i_qfactor 0.71 -b_strategy 2 -bf 4 -refs 4 -direct-pred 3 -weightb 1 -mixed-refs 1 -8x8dct 1 -coder 1 -loglevel warning {{ video_filter }} -b:v 2800k -maxrate 2800k -vminrate 2800k -vbufsize 2240k -vprofile high -level 40",
-    "inserted_at": "2018-04-16 21:49:43",
-    "updated_at": "2018-04-16 21:49:43",
-    "target_width": 1920,
-    "version": "v2",
-    "description": "2800k_1080p_mobile_hd",
-    "target_height": 1080,
-    "name": "2800k_1080p_mobile_hd",
-    "target_bitrate": 2800000
-  },
-  {
-    "active": true,
-    "template": "-an -pix_fmt yuv420p -flags +loop -crf 1 -vcodec libx264 -partitions +parti8x8+parti4x4+partp8x8+partb8x8 -me_method umh -subq 8 -me_range 16 {{ key_frame_placement }} -trellis 0 -sc_threshold 0 -i_qfactor 0.71 -b_strategy 2 -bf 4 -refs 4 -direct-pred 3 -weightb 1 -mixed-refs 1 -8x8dct 1 -coder 1 -loglevel warning {{ video_filter }} -b:v 3400k -maxrate 3400k -vminrate 3400k -vbufsize 2720k -vprofile high -level 40",
-    "inserted_at": "2018-04-16 21:49:43",
-    "updated_at": "2018-04-16 21:49:43",
-    "target_width": 1920,
-    "version": "v2",
-    "description": "3400k_1080p_ott_hd",
-    "target_height": 1080,
-    "name": "3400k_1080p_ott_hd",
-    "target_bitrate": 3400000
   }
 ]

@@ -22,8 +22,9 @@ def generate_key_frame_placement(fps):
 
 
 def generate_custom_key_frame_placement(fps, interval_secs):
-    return "-g " + str(2 * int((0.5 + fps) * interval_secs)) + " -keyint_min " + \
-        str(interval_secs) + " -flags +cgop"
+    interval_frames = str(int((0.5 + fps) * interval_secs))
+    return "-g " + interval_frames + " -keyint_min " + \
+        interval_frames + " -flags +cgop"
 
 
 def generate_fps_filter(fps):
