@@ -1,0 +1,135 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Verdana, Arial, sans-serif;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #dddddd;
+        }
+
+        #t01 {
+            width: 60%;
+            border-collapse: collapse;
+            background-color: #f1f1c1;
+        }
+
+        #t01 tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+
+        #t01 tr:nth-child(odd) {
+            background-color: #fff;
+        }
+
+        #t01 th {
+            color: black;
+            background-color: white;
+        }
+
+        #t01 td#FAILED {
+            background-color: red;
+            color: white;
+        }
+
+        #t01 td#PASSED {
+            background-color: green;
+            color: white;
+        }
+
+        .column {
+            float: left;
+            width: 50%;
+            padding: 0px;
+        }
+
+        /* Clear floats after image containers */
+        .row::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+    </style>
+
+    <title>{{ data.title }} Video Quality Metrics Report</title>
+
+
+</head>
+
+<body>
+
+    <h1>VMAF (transcode vs source) compared to VMAF (transcode vs. 1080p) </h1>
+
+    <H2>Source File: {{ data.source_file }} </H2>
+    <img src={{ data.thumbnails_strip }}>
+    <H3>Attributes</H3>
+    <table id="t01">
+        <tr>
+            <td>Source Duration</td>
+            <td>{{ data.source_duration }} seconds</td>
+        </tr>
+        <tr>
+            <td>Source Frame Rate</td>
+            <td>{{ data.source_fps }} fps</td>
+        </tr>
+        <tr>
+            <td>Source Size</td>
+            <td>{{ data.source_width }}x{{ data.source_height }}</td>
+        </tr>
+    </table>
+
+    {% for comparison in data.variant_comparisons.items() %}
+    <hr>
+    <!-- <H2>Compare: {{ key }}</H2> -->
+    <H3>{{ comparison.1.variants.0.name }} vs. {{ comparison.1.variants.1.name }} </H3>
+    <table id="t01">
+        <tr>
+            <td>Bitrate</td>
+            <td>{{ comparison.1.variants.0.bitrate }}</td>
+            <td>{{ comparison.1.variants.1.bitrate }}</td>
+        </tr>
+        <tr>
+            <td>VMAF Score vs. 3400p 1080k File</td>
+            <td>{{ comparison.1.variants.0.vmaf_score_vs_1080 }}</td>
+            <td>{{ comparison.1.variants.1.vmaf_score_vs_1080 }}</td>
+        </tr>
+        <tr>
+            <td>Average Frame VMAF Difference Between High and Low:</td>
+            <td colspan=2>{{ comparison.1.average_vmaf_difference }}</td>
+        </tr>
+
+        <tr>
+            <td>Max Frame VMAF Difference Between High and Low:</td>
+            <td colspan=2>{{ comparison.1.max_vmaf_difference }}</td>
+        </tr>
+    </table>
+
+    <div class="row">
+        <div class="column">
+            <img src={{ comparison.1.variants.0.vs_1080_vmaf_plot }}
+                alt="VMAF: High Transcode vs. 3400kbps 1080 Transcode" style="width:100%">
+        </div>
+        <div class="column">
+            <img src={{ comparison.1.variants.1.vs_1080_vmaf_plot }}
+                alt="VMAF: Low Transcode vs. 3400kbps 1080 Transcode" style="width:100%">
+        </div>
+    </div>
+    <img src={{ comparison.1.vmaf_difference_plot }}>
+
+
+    {% endfor %}
+</body>
+
+</html>

@@ -1,0 +1,190 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Verdana, Arial, sans-serif;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #dddddd;
+        }
+
+        #t01 {
+            width: 60%;
+            border-collapse: collapse;
+            background-color: #f1f1c1;
+        }
+
+        #t01 tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+
+        #t01 tr:nth-child(odd) {
+            background-color: #fff;
+        }
+
+        #t01 th {
+            color: black;
+            background-color: white;
+        }
+
+        #t01 td#FAILED {
+            background-color: red;
+            color: white;
+        }
+
+        #t01 td#PASSED {
+            background-color: green;
+            color: white;
+        }
+
+        .column {
+            float: left;
+            width: 50%;
+            padding: 0px;
+        }
+
+        /* Clear floats after image containers */
+        .row::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+    </style>
+
+    <title>{{ data.title }} Video Quality Metrics Report</title>
+
+
+</head>
+
+<body>
+
+    <h1>VMAF (transcode vs source) compared to VMAF (transcode vs. 1080p) </h1>
+
+    <H2>Source File: {{ data.source_file }} </H2>
+    <img src={{ data.thumbnails_strip }}>
+    <H3>Attributes</H3>
+    <table id="t01">
+        <tr>
+            <td>Source Duration</td>
+            <td>{{ data.source_duration }} seconds</td>
+        </tr>
+        <tr>
+            <td>Source Frame Rate</td>
+            <td>{{ data.source_fps }} fps</td>
+        </tr>
+        <tr>
+            <td>Source Size</td>
+            <td>{{ data.source_width }}x{{ data.source_height }}</td>
+        </tr>
+    </table>
+
+    {% for comparison in data.comparisons %}
+    <hr>
+    <H2>Compare: {{ comparison.name }}</H2>
+    <H3>Attributes</H3>
+    <table id="t01">
+        <tr>
+            <td>Bitrate</td>
+            <td>{{ comparison.bitrate }} kbps</td>
+        </tr>
+        <tr>
+            <td>Transcode Frame Size</td>
+            <td>{{ comparison.width }}x{{ comparison.height }}</td>
+        </tr>
+        <tr>
+            <td>VMAF Score vs. Source File</td>
+            <td>{{ comparison.vmaf_score_vs_source }}</td>
+        </tr>
+        <tr>
+            <td>VMAF Score vs. 3400p 1080k File</td>
+            <td>{{ comparison.vmaf_score_vs_1080 }}</td>
+        </tr>
+        <tr>
+            <td>Average difference between VMAF vs. Source and VMAF vs 1080:</td>
+            <td>{{ comparison.average_vmaf_difference }}</td>
+        </tr>
+
+        <tr>
+            <td>Max Frame difference between VMAF vs. Source and VMAF vs 1080:</td>
+            <td>{{ comparison.max_vmaf_difference }}</td>
+        </tr>
+    </table>
+
+    <div class="row">
+        <div class="column">
+            <img src={{ comparison.vs_source_vmaf_plot }} alt="VMAF: Transcode vs. ProRes Source" style="width:100%">
+        </div>
+        <div class="column">
+            <img src={{ comparison.vs_1080_vmaf_plot }} alt="VMAF: Transcode vs. 3400kbps 1080 Transcode"
+                style="width:100%">
+        </div>
+    </div>
+
+    <!-- <img src={{ comparison.vs_source_vmaf_plot }}> <img src={{ comparison.vs_1080_vmaf_plot }}> -->
+
+    <img src={{ comparison.vmaf_difference_plot }}>
+
+    <H3>Source Thumbnails</H3>
+    <img src={{ comparison.thumbnails_strip }}>
+
+    <H3>Tested Variants</H3>
+    {% for variant in comparison.variants %}
+    <H4>{{ variant.template_name }} </H4>
+    <table id="t01">
+        <tr>
+            <td>Bitrate</td>
+            <td>{{ variant.template.target_bitrate }}</td>
+        </tr>
+        <tr>
+            <td>Frame Size</td>
+            <td>{{ variant.template.target_width }}:{{ variant.template.target_height }}</td>
+        </tr>
+        <tr>
+            <td>VMAF Score for exisitng Tubi VOD Profile (4sec GOP):</td>
+            <td>{{ variant.vod_vmaf_score }}</td>
+        </tr>
+
+        <tr>
+            <td> Closest VMAF/bitrate match (2sec GOP):</td>
+            <td>bitrate: {{ variant.first_acceptable_vmaf_bitrate }} VMAF:
+                {{ variant.first_acceptable_vmaf }}</td>
+        </tr>
+        <tr>
+            <td>SSIM Score for exisitng Tubi VOD Profile (4 sec GOP):</td>
+            <td>{{ variant.vod_ssim_score }}</td>
+        </tr>
+        <tr>
+            <td> Closest SSIM/bitrate match (2sec GOP):</td>
+            <td>bitrate: {{ variant.first_acceptable_ssim_bitrate }} SSIM:
+                {{ variant.first_acceptable_ssim }}</td>
+        </tr>
+        <tr>
+            <td>PSNR Score for exisitng Tubi VOD Profile (4 sec GOP):</td>
+            <td>{{ variant.vod_psnr_score }}</td>
+        </tr>
+        <tr>
+            <td> Closest PSNR/bitrate match (2sec GOP):</td>
+            <td>bitrate: {{ variant.first_acceptable_psnr_bitrate }} PSNR:
+                {{ variant.first_acceptable_psnr }}</td>
+        </tr>
+    </table>
+    <p></p>
+    <img src={{ variant.bitrate_vs_vmaf_plot }}> <img src={{ variant.bitrate_vs_ssim_plot }}>
+    <img src={{ variant.multi_bitrate_time_plot }}>
+    <img src={{ variant.three_bitrate_time_plot }}>
+    {% endfor %} {% endfor %}
+</body>
+
+</html>

@@ -261,32 +261,6 @@ def ffmpeg_grab_frame(frame_num, source_path, output_path):
     result.check_returncode()
 
 
-def ffmpeg_grab_frames(source_path, frame_nums, output_directory, filename_prefix):
-    if not os.path.isdir(output_directory):
-        raise Exception(
-            'output_directory must be a directory: {}'.format(output_directory))
-
-    combined_prefix = os.path.join(output_directory, filename_prefix)
-
-    eq_expressions = ""
-    output_files = []
-    for idx, frame_num in enumerate(frame_nums):
-        output_files.append(filename_prefix + str(idx + 1) + ".jpg")
-        eq_expressions += "eq(n\\," + str(frame_num) + ")"
-        if idx < len(frame_nums) - 1:
-            eq_expressions += "+"
-
-    args = ["ffmpeg", "-y", "-i", source_path, "-vf",
-            "fps=29.97,select='" + eq_expressions + "',scale=1280:720", "-vsync", "0",  combined_prefix + "%d.jpg"]
-
-    result = subprocess.run(
-        args,  shell=False, encoding='utf-8', capture_output=True)
-
-    result.check_returncode()
-
-    return output_files
-
-
 def ffmpeg_grab_diff_frame(frame_num, source_path, transcode_path, output_path, transcode_fps, dest_size):
     if not output_path.endswith(".jpg"):
         raise Exception('output_path must end in .jpg: {}'.format(output_path))

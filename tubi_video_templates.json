@@ -1,86 +1,14 @@
 [
   {
     "active": true,
-    "template": "-an -pix_fmt yuv420p -flags +loop -crf 23 -vcodec libx264 -partitions +parti8x8+parti4x4+partp8x8+partb8x8 -me_method umh -subq 8 -me_range 16 {{ key_frame_placement }} -trellis 0 -sc_threshold 0 -i_qfactor 0.71 -b_strategy 2 -bf 4 -refs 4 -direct-pred 3 -weightb 1 -mixed-refs 1 -8x8dct 1 -coder 1 -loglevel warning {{ video_filter }} -b:v 250k -maxrate 250k -vminrate 250k -bufsize 200k -vprofile main -level 30",
-    "inserted_at": "2018-04-16 21:49:41",
-    "updated_at": "2018-04-16 21:49:41",
-    "target_width": 426,
-    "version": "v2",
-    "description": "250k_240p_mobile_hd_sd",
-    "target_height": 240,
-    "name": "250k_240p_mobile_hd_sd",
-    "target_bitrate": 250000
-  },
-  {
-    "active": true,
-    "template": "-an -pix_fmt yuv420p -flags +loop -crf 20 -vcodec libx264 -partitions +parti8x8+parti4x4+partp8x8+partb8x8 -me_method umh -subq 8 -me_range 16 {{ key_frame_placement }} -trellis 0 -sc_threshold 0 -i_qfactor 0.71 -b_strategy 2 -bf 4 -refs 4 -direct-pred 3 -weightb 1 -mixed-refs 1 -8x8dct 1 -coder 1 -loglevel warning {{ video_filter }} -b:v 600k -maxrate 600k -vminrate 600k -bufsize 480k -vprofile main -level 30",
-    "inserted_at": "2018-04-16 21:49:42",
-    "updated_at": "2018-04-16 21:49:42",
-    "target_width": 640,
-    "version": "v2",
-    "description": "600k_360p_mobile_ott_hd_sd",
-    "target_height": 360,
-    "name": "600k_360p_mobile_ott_hd_sd",
-    "target_bitrate": 600000
-  },
-  {
-    "active": true,
-    "template": "-an -pix_fmt yuv420p -flags +loop -crf 1 -vcodec libx264 -partitions +parti8x8+parti4x4+partp8x8+partb8x8 -me_method umh -subq 8 -me_range 16 {{ key_frame_placement }} -trellis 0 -sc_threshold 0 -i_qfactor 0.71 -b_strategy 2 -bf 4 -refs 4 -direct-pred 3 -weightb 1 -mixed-refs 1 -8x8dct 1 -coder 1 -loglevel warning {{ video_filter }} -b:v 1200k -maxrate 1200k -vminrate 1200k -vbufsize 960k -vprofile high -level 40",
-    "inserted_at": "2018-04-16 21:49:42",
-    "updated_at": "2018-04-16 21:49:42",
-    "target_width": 854,
-    "version": "v2",
-    "description": "1200k_480p_mobile_ott_hd_sd",
-    "target_height": 480,
-    "name": "1200k_480p_mobile_ott_hd_sd",
-    "target_bitrate": 1200000
-  },
-  {
-    "active": true,
-    "template": "-an -pix_fmt yuv420p -flags +loop -crf 1 -vcodec libx264 -partitions +parti8x8+parti4x4+partp8x8+partb8x8 -me_method umh -subq 8 -me_range 16 {{ key_frame_placement }} -trellis 0 -sc_threshold 0 -i_qfactor 0.71 -b_strategy 2 -bf 4 -refs 4 -direct-pred 3 -weightb 1 -mixed-refs 1 -8x8dct 1 -coder 1 -loglevel warning {{ video_filter }} -b:v 1500k -maxrate 1500k -vminrate 1500k -vbufsize 1200k -vprofile high -level 40",
-    "inserted_at": "2018-04-16 21:49:42",
-    "updated_at": "2018-04-16 21:49:42",
-    "target_width": 1024,
-    "version": "v2",
-    "description": "1500k_576p_mobile_sd",
-    "target_height": 576,
-    "name": "1500k_576p_mobile_sd",
-    "target_bitrate": 1500000
-  },
-  {
-    "active": true,
-    "template": "-an -pix_fmt yuv420p -flags +loop -crf 1 -vcodec libx264 -partitions +parti8x8+parti4x4+partp8x8+partb8x8 -me_method umh -subq 8 -me_range 16 {{ key_frame_placement }} -trellis 0 -sc_threshold 0 -i_qfactor 0.71 -b_strategy 2 -bf 4 -refs 4 -direct-pred 3 -weightb 1 -mixed-refs 1 -8x8dct 1 -coder 1 -loglevel warning {{ video_filter }} -b:v 1800k -maxrate 1800k -vminrate 1800k -vbufsize 1440k -vprofile high -level 40",
-    "inserted_at": "2018-04-16 21:49:42",
-    "updated_at": "2018-04-16 21:49:42",
-    "target_width": 1024,
-    "version": "v2",
-    "description": "1800k_576p_ott_sd",
-    "target_height": 576,
-    "name": "1800k_576p_ott_sd",
-    "target_bitrate": 1800000
-  },
-  {
-    "active": true,
-    "template": "-an -pix_fmt yuv420p -flags +loop -crf 1 -vcodec libx264 -partitions +parti8x8+parti4x4+partp8x8+partb8x8 -me_method umh -subq 8 -me_range 16 {{ key_frame_placement }} -trellis 0 -sc_threshold 0 -i_qfactor 0.71 -b_strategy 2 -bf 4 -refs 4 -direct-pred 3 -weightb 1 -mixed-refs 1 -8x8dct 1 -coder 1 -loglevel warning {{ video_filter }} -b:v 1800k -maxrate 1800k -vminrate 1800k -vbufsize 1440k -vprofile high -level 40",
-    "inserted_at": "2018-04-16 21:49:42",
-    "updated_at": "2018-04-16 21:49:42",
-    "target_width": 1280,
-    "version": "v2",
-    "description": "1800k_720p_mobile_hd",
-    "target_height": 720,
-    "name": "1800k_720p_mobile_hd",
-    "target_bitrate": 1800000
-  },
-  {
-    "active": true,
-    "template": "-an -pix_fmt yuv420p -flags +loop -crf 1 -vcodec libx264 -partitions +parti8x8+parti4x4+partp8x8+partb8x8 -me_method umh -subq 8 -me_range 16 {{ key_frame_placement }} -trellis 0 -sc_threshold 0 -i_qfactor 0.71 -b_strategy 2 -bf 4 -refs 4 -direct-pred 3 -weightb 1 -mixed-refs 1 -8x8dct 1 -coder 1 -loglevel warning {{ video_filter }} -b:v 2400k -maxrate 2400k -vminrate 2400k -vbufsize 1920k -vprofile high -level 40",
+    "template": "-an -pix_fmt yuv420p -flags +loop -crf 1 -vcodec libx264 -partitions +parti8x8+parti4x4+partp8x8+partb8x8 -me_method umh -subq 8 -me_range 16 {{ key_frame_placement }} -trellis 0 -sc_threshold 0 -i_qfactor 0.71 -b_strategy 2 -bf 4 -refs 4 -direct-pred 3 -weightb 1 -mixed-refs 1 -8x8dct 1 -coder 1 -loglevel warning {{ video_filter }} -b:v 10000k -maxrate 10000k -vminrate 10000k -vbufsize 8000k -vprofile high -level 40",
     "inserted_at": "2018-04-16 21:49:43",
     "updated_at": "2018-04-16 21:49:43",
-    "target_width": 1280,
+    "target_width": 1920,
     "version": "v2",
-    "description": "2400k_720p_ott_hd",
-    "target_height": 720,
-    "name": "2400k_720p_ott_hd",
-    "target_bitrate": 2400000
+    "description": "10Mpbs_1080p_reference_hd",
+    "target_height": 1080,
+    "name": "10Mpbs_1080p_reference_hd",
+    "target_bitrate": 10000000
   }
 ]

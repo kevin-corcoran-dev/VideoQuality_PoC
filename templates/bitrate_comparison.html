@@ -57,11 +57,11 @@
 
 <body>
 
-    <h1>Video QC Report for media_id {{ data.title }} </h1>
+    <h1>Bitrate Analysis Report: Current 4-sec GOPs vs vaious bitrates of 2-sec GOPs </h1>
 
     {% for test_asset in data.test_assets %}
     <hr>
-    <H2>Asset: {{ test_asset.filepath }}.</H2>
+    <H2>Asset: {{ test_asset.filepath }}</H2>
     <H3>Source Attributes</H3>
     <table id="t01">
         <tr>
