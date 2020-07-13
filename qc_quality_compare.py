@@ -9,13 +9,8 @@ import resource
 import operator
 from timecode import Timecode
 from jinja2 import Environment, FileSystemLoader
-import boto3
-from botocore.exceptions import ClientError
-import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
 from fractions import Fraction
 import numpy as np
-from scipy.signal import find_peaks
 
 import titan
 import ffmpeg_funcs as ffmpeg
@@ -145,7 +140,7 @@ def create_quality_report(source_directory, results_directory, subsample):
                 "{{ key_frame_placement }}", titan.generate_custom_key_frame_placement(target_fps, 2))
 
             if not os.path.exists(output_path):
-                ffmpeg.ffmpeg_transcode(
+                ffmpeg.transcode(
                     abs_source_path, vod_template, output_path)
 
             # save time if we have this file from a previous run -- for debugging
@@ -153,7 +148,7 @@ def create_quality_report(source_directory, results_directory, subsample):
                 score, frame_nums, frame_vmafs = vmaf.parse_vmaf_json(
                     json_path)
             else:
-                score, frame_nums, frame_vmafs = vmaf.ffmpeg_run_vmaf_full(
+                score, frame_nums, frame_vmafs = vmaf.run_vmaf_full(
                     abs_source_path, output_path, json_path, target_fps, target_width, target_height, subsample)
 
             template_results['vod_vmaf_score'] = round(score, 3)
@@ -205,14 +200,14 @@ def create_quality_report(source_directory, results_directory, subsample):
                 print(test_template)
 
                 if not os.path.exists(test_variant['output_path']):
-                    ffmpeg.ffmpeg_transcode(
+                    ffmpeg.transcode(
                         abs_source_path, test_template, test_variant['output_path'])
 
                 if os.path.exists(test_variant['vmaf_json_path']):
                     test_variant['vmaf'], test_variant['vmaf_frame_times'], test_variant['vmaf_frame_scores'] = vmaf.parse_vmaf_json(
                         test_variant['vmaf_json_path'])
                 else:
-                    test_variant['vmaf'], test_variant['vmaf_frame_times'], test_variant['vmaf_frame_scores'] = vmaf.ffmpeg_run_vmaf_full(
+                    test_variant['vmaf'], test_variant['vmaf_frame_times'], test_variant['vmaf_frame_scores'] = vmaf.run_vmaf_full(
                         abs_source_path, test_variant['output_path'], test_variant['vmaf_json_path'], target_fps, target_width, target_height, subsample)
 
                 test_variant['ssim'], _, test_variant['ssim_frame_scores'] = vmaf.parse_ssim_from_vmaf_json(
@@ -243,14 +238,14 @@ def create_quality_report(source_directory, results_directory, subsample):
                                                                        "_triple_VMAF_vs_time.png")
 
             # Generate the charts
-            plot_vmaf.plot_multi_vmaf_timegraph(template_results['multi_bitrate_time_plot'], template_results['vod_vmaf_frames'],
-                                                template_results['vod_vmaf_frame_scores'], template_results['test_variants'], template['target_bitrate'], duration, asset_report['fps'])
-            plot_vmaf.plot_three_vmaf_timegraph(template_results['three_bitrate_time_plot'], template_results['vod_vmaf_frames'],
-                                                template_results['vod_vmaf_frame_scores'], template_results['test_variants'], template['target_bitrate'], template_results['first_acceptable_vmaf_bitrate'], duration, asset_report['fps'])
             plot_vmaf.plot_vmaf_vs_bitrate(template_results['bitrate_vs_vmaf_plot'],  template_name, "vmaf", template['target_bitrate'],
                                            template_results['vod_vmaf_score'], alternate_bitrate_targets, template_results['test_variants'])
             plot_vmaf.plot_vmaf_vs_bitrate(template_results['bitrate_vs_ssim_plot'], template_name, "ssim", template['target_bitrate'],
                                            template_results['vod_ssim_score'], alternate_bitrate_targets, template_results['test_variants'])
+            plot_vmaf.plot_multi_vmaf_timegraph(template_results['multi_bitrate_time_plot'], template_results['vod_vmaf_frames'],
+                                                template_results['vod_vmaf_frame_scores'], template_results['test_variants'], template['target_bitrate'], duration, asset_report['fps'])
+            plot_vmaf.plot_three_vmaf_timegraph(template_results['three_bitrate_time_plot'], template_results['vod_vmaf_frames'],
+                                                template_results['vod_vmaf_frame_scores'], template_results['test_variants'], template['target_bitrate'], template_results['first_acceptable_vmaf_bitrate'], duration, asset_report['fps'])
 
             asset_report['variants'].append(template_results)
 
