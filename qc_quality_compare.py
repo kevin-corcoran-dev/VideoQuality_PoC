@@ -60,12 +60,12 @@ def find_first_metric_to_meet_or_exceed(compare_bitrate, metric, test_variants):
     return first_pair[0], round(first_pair[1], 3)
 
 
-def create_quality_report(source_directory, results_directory, subsample):
+def main(source_directory, results_directory, subsample):
 
     report_data = {}
     report_data['title'] = "Bitrates"
 
-    with open('tubi_video_templates.json') as f:
+    with open('tubi_qc_reference_video.json') as f:
         templates = json.load(f)
 
     report_data['test_assets'] = []
@@ -280,14 +280,10 @@ if __name__ == "__main__":
     else:
         # hardcoded for debugging
         # in the future return an error instead
-        # source_directory = expanduser('~') + "/Downloads/video_quality/"
-        # results_directory = expanduser('~') + "/video_quality/live_news"
-        # subsample = 1
-
         source_directory = expanduser(
             '~') + "/Downloads/golden_reference_research/"
         results_directory = expanduser(
-            '~') + "/video_quality/golden_reference_research"
+            '~') + "/video_quality/CQ_testing"
         subsample = 1
 
     # create the results directory
@@ -295,5 +291,5 @@ if __name__ == "__main__":
         os.mkdir(results_directory)
 
     # sys.argv[1], sys.argv[2]
-    create_quality_report(source_directory,
-                          results_directory, subsample)
+    main(source_directory,
+         results_directory, subsample)
