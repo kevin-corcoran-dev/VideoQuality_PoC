@@ -12,6 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 import boto3
 from botocore.exceptions import ClientError
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 from fractions import Fraction
 import numpy as np
 from scipy.signal import find_peaks
@@ -255,27 +256,39 @@ def plot_vmaf_graph(output_path, frame_nums, frame_scores, source_duration, lowe
     plt.savefig(output_path)
 
 
-def plot_multi_vmaf_timegraph(output_path, frame_nums, baseline_frame_scores, variant_list, source_duration, fps):
+def plot_multi_vmaf_timegraph(output_path, frame_nums, baseline_frame_scores, variant_list, target_bitrate, source_duration, fps):
 
     timecode = Timecode(fps, '00:00:00:00')
 
-    title = " Time vs. " + "VMAF" + " (2-second GOPs)"
+    title = " Effect of Bitrate Changes on VMAF over Asset Duration"
     plt.suptitle(title, fontsize=14, color='blue')
-    plt.title("Red line is VMAF/time of existing VOD transcode (4sec GOPs).  Blue line is qualiyt/time for 2sec GOPs",
+    plt.title("Blue line is VMAF/time of existing VOD transcode (4sec GOPs).  Gray lines are quality/time for 2sec GOPs at various bitrates",
               fontsize=7, color='black')
 
     upper = max(baseline_frame_scores)
     lower = min(baseline_frame_scores)
 
-    multi_frame_scores = [variant['vmaf_frame_scores']
-                          for variant in variant_list]
+    higher_bitrate_scores = [variant['vmaf_frame_scores']
+                             for variant in variant_list if variant['bitrate'] > target_bitrate]
 
-    for idx, frame_scores in enumerate(multi_frame_scores):
+    lower_bitrate_scores = [variant['vmaf_frame_scores']
+                            for variant in variant_list if variant['bitrate'] < target_bitrate]
+
+    # generate lighter lineshades
+    higher_lineshades = np.linspace(0.7, 0.9, len(higher_bitrate_scores))
+    for idx, frame_scores in enumerate(higher_bitrate_scores):
         upper = max(upper, max(frame_scores))
         lower = min(lower, min(frame_scores))
-        plt.plot(frame_nums, frame_scores, str(1 - (0.1 * (1 + idx))))
+        plt.plot(frame_nums, frame_scores, str(higher_lineshades[idx]))
 
-    plt.plot(frame_nums, baseline_frame_scores, color='r')
+    lower_lineshades = np.linspace(0.9, 0.7, len(lower_bitrate_scores))
+    for idx, frame_scores in enumerate(lower_bitrate_scores):
+        upper = max(upper, max(frame_scores))
+        lower = min(lower, min(frame_scores))
+        # plt.plot(frame_nums, frame_scores, str(1 - (0.1 * (1 + idx))))
+        plt.plot(frame_nums, frame_scores, str(lower_lineshades[idx]))
+
+    plt.plot(frame_nums, baseline_frame_scores)
 
     # generate major tics based on evenly divided time
 
@@ -309,6 +322,9 @@ def plot_three_vmaf_timegraph(output_path, frame_nums, baseline_frame_scores, va
 
     timecode = Timecode(fps, '00:00:00:00')
 
+    upper = max(baseline_frame_scores)
+    lower = min(baseline_frame_scores)
+
     baseline_label = "Existing " + \
         str(target_bitrate) + "bps VOD Transcode (4sec GOP)"
     identical_label = "Identical " + \
@@ -322,23 +338,23 @@ def plot_three_vmaf_timegraph(output_path, frame_nums, baseline_frame_scores, va
     recommended_bitrate_variant = [variant['vmaf_frame_scores']
                                    for variant in variant_list if variant['bitrate'] == recommended_bitrate][0]
 
-    title = " VOD Transcode (4sec GOP) VMAF vs. Matching Bitrate (2sec GOP) Over Time"
+    title = " VOD Transcode (4sec GOP) VMAF vs. Matching Bitrate (2sec GOP) Over Asset Duration"
     plt.title(title, fontsize=14, color='blue')
-
-    upper = max(baseline_frame_scores)
-    lower = min(baseline_frame_scores)
-    plt.plot(frame_nums, baseline_frame_scores, color='r',
-             label=baseline_label)
 
     upper = max(upper, max(same_bitrate_variant))
     lower = min(lower, min(same_bitrate_variant))
-    plt.plot(frame_nums, same_bitrate_variant, color='y',
+    plt.plot(frame_nums, same_bitrate_variant, color='r',
              label=identical_label)
 
     upper = max(upper, max(recommended_bitrate_variant))
     lower = min(lower, min(recommended_bitrate_variant))
     plt.plot(frame_nums, recommended_bitrate_variant, color='g',
              label=recommended_label)
+
+    upper = max(baseline_frame_scores)
+    lower = min(baseline_frame_scores)
+    plt.plot(frame_nums, baseline_frame_scores, color='k',
+             label=baseline_label)
 
     # generate major tics based on evenly divided time
 
@@ -359,7 +375,11 @@ def plot_three_vmaf_timegraph(output_path, frame_nums, baseline_frame_scores, va
 
     ax.grid()
 
-    plt.legend(handles=[line2], loc='lower right')
+    red_line = mlines.Line2D([], [], color='k', label=baseline_label)
+    yellow_line = mlines.Line2D([], [], color='r', label=identical_label)
+    green_line = mlines.Line2D([], [], color='g', label=recommended_label)
+    plt.legend(handles=[red_line, yellow_line,
+                        green_line], loc='lower right')
 
     plt.ylabel('vmaf score')
     plt.ylim(lower, upper)
@@ -628,7 +648,7 @@ def create_quality_report(source_directory, results_directory, subsample):
 
             # Generate the charts
             plot_multi_vmaf_timegraph(template_results['multi_bitrate_time_plot'], template_results['vod_vmaf_frames'],
-                                      template_results['vod_vmaf_frame_scores'], template_results['test_variants'], duration, asset_report['fps'])
+                                      template_results['vod_vmaf_frame_scores'], template_results['test_variants'], template['target_bitrate'], duration, asset_report['fps'])
             plot_three_vmaf_timegraph(template_results['three_bitrate_time_plot'], template_results['vod_vmaf_frames'],
                                       template_results['vod_vmaf_frame_scores'], template_results['test_variants'], template['target_bitrate'], template_results['first_acceptable_vmaf_bitrate'], duration, asset_report['fps'])
             plot_vmaf_vs_bitrate(template_results['bitrate_vs_vmaf_plot'],  template_name, "vmaf", template['target_bitrate'],
@@ -669,8 +689,14 @@ if __name__ == "__main__":
     else:
         # hardcoded for debugging
         # in the future return an error instead
-        source_directory = expanduser('~') + "/Downloads/video_quality/"
-        results_directory = expanduser('~') + "/video_quality/live_news"
+        # source_directory = expanduser('~') + "/Downloads/video_quality/"
+        # results_directory = expanduser('~') + "/video_quality/live_news"
+        # subsample = 1
+
+        source_directory = expanduser(
+            '~') + "/Downloads/golden_reference_research/"
+        results_directory = expanduser(
+            '~') + "/video_quality/golden_reference_research"
         subsample = 1
 
     # create the results directory
