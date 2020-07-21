@@ -1,4 +1,5 @@
 import subprocess
+import os
 import re
 import json
 
@@ -8,6 +9,8 @@ def ffmpeg_run_vmaf(source, transcode, ss, t, dest_fps, dest_size):
     args = ["ffmpeg", "-ss", str(ss), "-i", source, "-t", str(t),
             "-ss", str(ss), "-i", transcode, "-t", str(t), "-an",
             "-filter_complex", "[0:v]fps=" + str(dest_fps) + ",scale=" + str(dest_size['width']) + ":" + str(dest_size['height']) + ",setpts=PTS-STARTPTS[source];[1:v]setpts=PTS-STARTPTS[trancoded];[source][trancoded]libvmaf", "-f", "NULL", " -"]
+
+    print(" ".join(args))
 
     result = subprocess.run(
         args,  shell=False, encoding='utf-8', capture_output=True)
@@ -34,7 +37,9 @@ def parse_vmaf_json(json_path):
     vmaf_score = 0
 
     with open(json_path, 'r') as f:
-        vmaf_json = json.load(f)
+        str_json = f.read()
+        str_json = re.sub(r'\bnan\b', 'NaN', str_json)
+        vmaf_json = json.loads(str_json)
 
         vmaf_score = vmaf_json['VMAF score']
 
@@ -52,7 +57,9 @@ def parse_psnr_from_vmaf_json(json_path):
     psnr_score = 0
 
     with open(json_path, 'r') as f:
-        vmaf_json = json.load(f)
+        str_json = f.read()
+        str_json = re.sub(r'\bnan\b', 'NaN', str_json)
+        vmaf_json = json.loads(str_json)
 
         psnr_score = vmaf_json['PSNR score']
 
@@ -70,7 +77,9 @@ def parse_ssim_from_vmaf_json(json_path):
     ssim_score = 0
 
     with open(json_path, 'r') as f:
-        vmaf_json = json.load(f)
+        str_json = f.read()
+        str_json = re.sub(r'\bnan\b', 'NaN', str_json)
+        vmaf_json = json.loads(str_json)
 
         ssim_score = vmaf_json['SSIM score']
 
@@ -86,8 +95,10 @@ def run_vmaf_full(source, transcode, log_path, dest_fps, target_width, target_he
     if not log_path.endswith(".json"):
         raise Exception('log_path must end in .json: {}'.format(log_path))
 
-    args = ["ffmpeg", "-ignore_editlist", "1", "-r", str(dest_fps), "-i", source, "-r", str(dest_fps),  "-i", transcode, "-an",
-            "-filter_complex", "[0:v]setpts=PTS-STARTPTS,scale=" + str(target_width) + ":" + str(target_height) + ",fifo[source];[1:v]setpts=PTS-STARTPTS[trancoded];[source][trancoded]libvmaf=log_fmt=json:psnr=1:ssim=1:log_path=" + log_path + ":n_subsample=" + str(subsample), "-f", "NULL", " -"]
+    args = ["ffmpeg", "-r", str(dest_fps), "-i", source, "-r", str(dest_fps),  "-i", transcode, "-an",
+            "-filter_complex", "[0:v]setpts=PTS-STARTPTS,scale=" + str(target_width) + ":" + str(target_height) + ",fifo[source];[1:v]setpts=PTS-STARTPTS,fifo[trancoded];[source][trancoded]libvmaf=log_fmt=json:psnr=1:ssim=1:log_path=" + log_path + ":n_subsample=" + str(subsample), "-f", "NULL", " -"]
+
+    print(" ".join(args))
 
     result = subprocess.run(
         args,  shell=False, encoding='utf-8', capture_output=True)
@@ -95,3 +106,13 @@ def run_vmaf_full(source, transcode, log_path, dest_fps, target_width, target_he
     result.check_returncode()
 
     return parse_vmaf_json(log_path)
+
+
+def read_or_create_vmaf(source_path, transcode_path, json_path, target_fps, target_width, target_height, subsample):
+    if os.path.exists(json_path):
+        score, frame_nums, frame_vmafs = parse_vmaf_json(json_path)
+    else:
+        score, frame_nums, frame_vmafs = run_vmaf_full(
+            source_path, transcode_path, json_path, target_fps, target_width, target_height, subsample)
+
+    return score, frame_nums, frame_vmafs
