@@ -16,6 +16,7 @@ import titan
 import ffmpeg_funcs as ffmpeg
 import vmaf
 import plot_vmaf
+import ffargs
 
 
 tubi_video_templates = "Tubi_Templates.json"
@@ -41,12 +42,6 @@ def write_dict_to_json(dict, output_path):
 def generate_alternate_bitrates(original_target):
     new_targets = np.linspace(int(original_target/2),
                               int(original_target * 2), 10)
-    return [int(target) for target in new_targets]
-
-
-def generate_qc_factors(proposed_target):
-    new_targets = np.linspace(int(proposed_target/2),
-                              int(proposed_target * 2), 10)
     return [int(target) for target in new_targets]
 
 
@@ -280,14 +275,8 @@ if __name__ == "__main__":
     else:
         # hardcoded for debugging
         # in the future return an error instead
-        # source_directory = expanduser('~') + "/Downloads/video_quality/"
-        # results_directory = expanduser('~') + "/video_quality/live_news"
-        # subsample = 1
-
-        source_directory = expanduser(
-            '~') + "/Downloads/golden_reference_research/"
-        results_directory = expanduser(
-            '~') + "/video_quality/golden_reference_research"
+        source_directory = expanduser('~') + "/Downloads/video_quality/"
+        results_directory = expanduser('~') + "/video_quality/live_news"
         subsample = 1
 
     # create the results directory

@@ -3,6 +3,7 @@ import os
 import subprocess
 import numpy as np
 import re
+import resource
 from fractions import Fraction
 
 
@@ -65,7 +66,8 @@ def ffprobe_get_framerate(source):
     result = subprocess.run(["ffprobe", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate", "-of", "default=noprint_wrappers=1:nokey=1", source],
                             shell=False, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE, )
 
-    return float(Fraction(result.stdout))
+    output = result.stdout.splitlines()[0]
+    return float(Fraction(output))
 
 
 def ffmpeg_get_deinterlace(source, duration):
@@ -109,8 +111,8 @@ def ffmpeg_grab_frames(source_path, frame_nums, output_directory, dest_width=128
         if idx < len(frame_nums) - 1:
             eq_expressions += "+"
 
-    args = ["ffmpeg", "-y", "-i", source_path, "-vf",
-            "fps=" + str(fps) + ",select='" + eq_expressions + "',scale=" + str(dest_width) + ":" + str(dest_height), "-vsync", "0",  combined_prefix + "%d.jpg"]
+    args = ["ffmpeg", "-y", "-i", source_path, "-copyts", "-vf",
+            "fps=" + str(fps) + ",select='" + eq_expressions + "',scale=" + str(dest_width) + ":" + str(dest_height), "-vsync", "0", "-frame_pts", "1", combined_prefix + "z%d.jpg"]
 
     result = subprocess.run(
         args,  shell=False, encoding='utf-8', capture_output=True)
@@ -148,7 +150,8 @@ def generate_diff_movie(source, transcode, output_path, dest_fps, target_width, 
     args = ["ffmpeg", "-r", str(dest_fps), "-i", source, "-r", str(dest_fps), "-i", transcode, "-an",
             "-filter_complex", "[0:v]setpts=PTS-STARTPTS,fps=" + str(dest_fps) + ",scale=" + str(target_width) + ":" + str(target_height) + "[source];[1:v]setpts=PTS-STARTPTS[trancoded];[source][trancoded]blend=all_mode=difference,hue=s=0,eq=gamma=1.7", output_path]
 
-    joined_args = " ".join(args)
+    print(" ".join(args))
+
     result = subprocess.run(
         args,  shell=False, encoding='utf-8', capture_output=True)
 
@@ -161,10 +164,47 @@ def transcode(source_path, video_template, output_path):
     args = ["ffmpeg", "-y", "-i", source_path, ] + \
         video_template + [output_path]
 
+    print(" ".join(args))
+
+    usage_start = resource.getrusage(resource.RUSAGE_CHILDREN)
     result = subprocess.run(
         args,  shell=False, encoding='utf-8', capture_output=True)
+
+    usage_end = resource.getrusage(resource.RUSAGE_CHILDREN)
+    execution_time = usage_end.ru_utime - usage_start.ru_utime
 
     if result.returncode:
         print(result.stderr)
 
     result.check_returncode()
+
+    return execution_time
+
+# def scene_detect(source_path):
+#     args = ["ffmpeg", "-i", source_path, "-vf", "scale=200:-1,scdet=s=1,showinfo", "-f", "NULL", "-"]
+#     result = subprocess.run(
+#         args,  shell=False, encoding='utf-8', capture_output=True)
+
+#     match_lines = [line for line in result.stderr.split(
+#         '\n') if "showinfo" in line and "iskey:1" in line]
+
+#     for match_line in match_lines:
+#         match_line_pts = re.search(r'(?:pts_time:)([0-9.]*)', match_line)
+
+
+def scene_detect(source, threshold):
+    result = subprocess.run(["ffmpeg", "-i", source, "-an", "-vf", "setpts=PTS-STARTPTS,select='gt(scene,0.5)',showinfo", "-f", "NULL", "-"],
+                            shell=False, encoding='utf-8', capture_output=True)
+
+    match_lines = [line for line in result.stderr.split(
+        '\n') if "showinfo" in line and "pts_time" in line]
+
+    scenes = [0.0]
+
+    for match_line in match_lines:
+        match_line_pts = re.search(r'(?:pts_time:)([0-9.]*)', match_line)
+
+        current_scene = float(match_line_pts.group(1))
+        scenes.append(current_scene)
+
+    return scenes

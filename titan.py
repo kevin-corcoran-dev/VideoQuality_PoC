@@ -141,3 +141,12 @@ def generate_select_filter(source_fps, fps_filter):
         return "select='mod(n-1\,2)'"
     else:
         return ""
+
+
+def customize_template(base_template, video_filter, key_frame_placement):
+    template = base_template.replace("{{ video_filter }}", video_filter)
+
+    template = template.replace(
+        "{{ key_frame_placement }}", key_frame_placement)
+
+    return template

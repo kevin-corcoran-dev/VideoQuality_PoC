@@ -43,7 +43,7 @@ def plot_vmaf_graph(output_path, frame_nums, frame_scores, source_duration, lowe
     plt.clf()
 
 
-def plot_multi_vmaf_timegraph(output_path, frame_nums, baseline_frame_scores, variant_list, target_bitrate, source_duration, fps):
+def plot_multi_vmaf_timegraph(output_path, frame_nums, baseline_frame_scores, variant_list, target_bitrate, source_duration, fps, test_item='bitrate'):
 
     timecode = Timecode(fps, '00:00:00:00')
 
@@ -56,10 +56,10 @@ def plot_multi_vmaf_timegraph(output_path, frame_nums, baseline_frame_scores, va
     lower = min(baseline_frame_scores)
 
     higher_bitrate_scores = [variant['vmaf_frame_scores']
-                             for variant in variant_list if variant['bitrate'] > target_bitrate]
+                             for variant in variant_list if variant[test_item] > target_bitrate]
 
     lower_bitrate_scores = [variant['vmaf_frame_scores']
-                            for variant in variant_list if variant['bitrate'] < target_bitrate]
+                            for variant in variant_list if variant[test_item] < target_bitrate]
 
     # generate lighter lineshades
     higher_lineshades = np.linspace(0.7, 0.9, len(higher_bitrate_scores))
@@ -205,6 +205,42 @@ def plot_vmaf_vs_bitrate(output_path, template_name, metric_name, reference_bitr
     plt.ylabel(metric_name + " score")
     plt.ylim(lower, upper)
     plt.xlabel('bitrate')
+    plt.subplots_adjust(bottom=0.2)
+    plt.gcf().set_size_inches(7, 5)
+    plt.savefig(output_path)
+    plt.clf()
+
+
+def plot_vmaf_vs_something(output_path, template_name, metric_name, reference_bitrate, reference_vmaf, x_axis_data, x_axis_units, variants):
+
+    bitrate_vmafs = [variant[metric_name] for variant in variants]
+
+    if metric_name == 'ssim':
+        lower = min(bitrate_vmafs) - 0.01
+        upper = min(1.0, 0.01 + max(bitrate_vmafs))
+    else:
+        lower = round(min(bitrate_vmafs) - 1)
+        upper = round(1 + max(bitrate_vmafs))
+
+    title = template_name + " " + x_axis_units + \
+        " vs. " + metric_name
+    plt.suptitle(title, fontsize=14, color='blue')
+    plt.title("Red cross is quality/bitrate for baseline transcode.  Blue line is quality/bitrate for 2sec GOPs",
+              fontsize=7, color='black')
+    plt.plot(x_axis_data, bitrate_vmafs)
+    plt.axvline(reference_bitrate, color='r')
+    plt.axhline(reference_vmaf, color='r')
+
+    ticlabels = [str(bitrate) for bitrate in x_axis_data]
+    plt.xticks(x_axis_data, ticlabels, rotation='vertical')
+
+    ax = plt.axes()
+
+    ax.grid()
+
+    plt.ylabel(metric_name + " score")
+    plt.ylim(lower, upper)
+    plt.xlabel(x_axis_units)
     plt.subplots_adjust(bottom=0.2)
     plt.gcf().set_size_inches(7, 5)
     plt.savefig(output_path)
