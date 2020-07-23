@@ -1,0 +1,85 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Verdana, Arial, sans-serif;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #dddddd;
+        }
+
+        #t01 {
+            width: 60%;
+            border-collapse: collapse;
+            background-color: #f1f1c1;
+        }
+
+        #t01 tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+
+        #t01 tr:nth-child(odd) {
+            background-color: #fff;
+        }
+
+        #t01 th {
+            color: black;
+            background-color: white;
+        }
+
+        #t01 td#FAILED {
+            background-color: red;
+            color: white;
+        }
+
+        #t01 td#PASSED {
+            background-color: green;
+            color: white;
+        }
+
+        .column {
+            float: left;
+            width: 50%;
+            padding: 0px;
+        }
+
+        /* Clear floats after image containers */
+        .row::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+    </style>
+
+    <title>{{ data.filename }} Cue Points</title>
+
+
+</head>
+
+<body>
+
+    <h1>Cue Points for {{ data.filename }} </h1>
+    input cue points: {{ data.cue_points }}
+    {% for cue_point in data.cue_points_info %}
+    <hr>
+    <H3>Time: {{ cue_point.time }} (frame: {{ cue_point.frame }}) </H3>
+    <p></p>
+    <img src={{ cue_point.thumbnails }} style="width:100%">
+    <p></p>
+
+    {% endfor %}
+</body>
+
+</html>

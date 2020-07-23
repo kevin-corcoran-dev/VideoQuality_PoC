@@ -60,8 +60,7 @@ def read_json_entry(output_path, key):
 
     if os.path.exists(output_path):
         with open(output_path, 'r') as fp:
-            if os.path.exists(output_path):
-                entries = json.load(fp)
+            entries = json.load(fp)
 
             if key in entries:
                 return entries[key]
@@ -78,9 +77,9 @@ def transcode_new_or_used(source_path, template, output_path, results_dict):
             source_path, template, output_path)
         write_json_entry(results_dict['transcode_times_json'],
                          output_path, results_dict['transcode_time'])
-    elif 'transcode_times_json' in results_dict and os.path.exists('transcode_times_json'):
+    elif 'transcode_times_json' in results_dict and os.path.exists(results_dict['transcode_times_json']):
         results_dict['transcode_time'] = read_json_entry(
-            results_dict['transcode_times_json'], 'transcode_time')
+            results_dict['transcode_times_json'], output_path)
     else:
         results_dict['transcode_time'] = 0
         write_json_entry(results_dict['transcode_times_json'],
@@ -145,7 +144,7 @@ def main(source_directory, results_directory, subsample):
 
         # grab the thumbnails
         asset_report['thumbnails_strip'] = ffmpeg.grab_thumbnail_strip(
-            abs_source_path, out_dir, duration, fps, 5)
+            abs_source_path, out_dir, duration, fps, 7)
 
         asset_report['variants'] = []
         for template in templates:
@@ -223,6 +222,7 @@ def main(source_directory, results_directory, subsample):
             template_results['test_variants'] = []
             for alternate_crf in alternate_crf_targets:
                 test_variant = {}
+                test_variant['transcode_times_json'] = template_results['transcode_times_json']
 
                 test_variant['crf'] = alternate_crf
                 test_variant['output_path'] = os.path.join(
@@ -233,14 +233,17 @@ def main(source_directory, results_directory, subsample):
                 test_template = ffargs.change_crf(
                     vod_template, alternate_crf)
 
-                if not os.path.exists(test_variant['output_path']):
-                    test_variant['transcode_time'] = ffmpeg.transcode(
-                        abs_source_path, test_template, test_variant['output_path'])
-                else:
-                    test_variant['transcode_time'] = 0
+                transcode_new_or_used(
+                    abs_source_path, test_template, test_variant['output_path'], test_variant)
 
-                test_variant['file_size'] = os.path.getsize(
-                    test_variant['output_path'])
+                # if not os.path.exists(test_variant['output_path']):
+                #     test_variant['transcode_time'] = ffmpeg.transcode(
+                #         abs_source_path, test_template, test_variant['output_path'])
+                # else:
+                #     test_variant['transcode_time'] = 0
+
+                # test_variant['file_size'] = os.path.getsize(
+                #     test_variant['output_path'])
 
                 test_variant['vmaf'], test_variant['vmaf_frame_times'], test_variant['vmaf_frame_scores'] = vmaf.read_or_create_vmaf(
                     abs_source_path, test_variant['output_path'], test_variant['vmaf_json_path'], target_fps, target_width, target_height, subsample)

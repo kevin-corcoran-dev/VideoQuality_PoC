@@ -4,6 +4,7 @@ import subprocess
 import numpy as np
 import re
 import resource
+import time
 from fractions import Fraction
 
 
@@ -106,13 +107,13 @@ def ffmpeg_grab_frames(source_path, frame_nums, output_directory, dest_width=128
     eq_expressions = ""
     output_files = []
     for idx, frame_num in enumerate(frame_nums):
-        output_files.append(filename_prefix + str(idx + 1) + ".jpg")
+        output_files.append(filename_prefix + str(frame_num) + ".jpg")
         eq_expressions += "eq(n\\," + str(frame_num) + ")"
         if idx < len(frame_nums) - 1:
             eq_expressions += "+"
 
     args = ["ffmpeg", "-y", "-i", source_path, "-copyts", "-vf",
-            "fps=" + str(fps) + ",select='" + eq_expressions + "',scale=" + str(dest_width) + ":" + str(dest_height), "-vsync", "0", "-frame_pts", "1", combined_prefix + "z%d.jpg"]
+            "fps=" + str(fps) + ",select='" + eq_expressions + "',scale=" + str(dest_width) + ":" + str(dest_height), "-vsync", "0", "-frame_pts", "1", combined_prefix + "%d.jpg"]
 
     result = subprocess.run(
         args,  shell=False, encoding='utf-8', capture_output=True)
@@ -169,7 +170,6 @@ def transcode(source_path, video_template, output_path):
     usage_start = resource.getrusage(resource.RUSAGE_CHILDREN)
     result = subprocess.run(
         args,  shell=False, encoding='utf-8', capture_output=True)
-
     usage_end = resource.getrusage(resource.RUSAGE_CHILDREN)
     execution_time = usage_end.ru_utime - usage_start.ru_utime
 

@@ -1,0 +1,157 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Verdana, Arial, sans-serif;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #dddddd;
+        }
+
+        #t01 {
+            width: 50%;
+            border-collapse: collapse;
+            background-color: #f1f1c1;
+        }
+
+        #t01 tr:nth-child(even) {
+            background-color: #dddddd;
+        }
+
+        #t01 tr:nth-child(odd) {
+            background-color: #fff;
+        }
+
+        #t01 th {
+            color: black;
+            background-color: white;
+        }
+
+        #t01 td#FAILED {
+            background-color: red;
+            color: white;
+        }
+
+        #t01 td#PASSED {
+            background-color: green;
+            color: white;
+        }
+
+
+        .column {
+            float: left;
+            width: 33%;
+            padding: 0px;
+        }
+
+        /* Clear floats after image containers */
+        .row::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+    </style>
+
+    <title>{{ data.title }} Video Quality Metrics Report</title>
+
+
+</head>
+
+<body>
+
+    <h1>Bitrate Analysis Report: Current 4-sec GOPs vs vaious bitrates of 2-sec GOPs </h1>
+
+    {% for test_asset in data.test_assets %}
+    <hr>
+    <H2>Asset: {{ test_asset.filepath }}</H2>
+    <H3>Source Attributes</H3>
+    <table id="t01">
+        <tr>
+            <td>Duration</td>
+            <td>{{ test_asset.duration }}</td>
+        </tr>
+        <tr>
+            <td>Frame Rate</td>
+            <td>{{ test_asset.fps }}</td>
+        </tr>
+        <tr>
+            <td>Source Width</td>
+            <td>{{ test_asset.source_width }}</td>
+        </tr>
+        <tr>
+            <td>Source Height</td>
+            <td>{{ test_asset.source_height }}</td>
+        </tr>
+        <tr>
+            <td>Source Sample Aspect Ratio</td>
+            <td>{{ test_asset.SAR }}</td>
+        </tr>
+    </table>
+
+    <H3>Source Thumbnails</H3>
+    <img src={{ test_asset.thumbnails_strip }}>
+
+    <H3>Tested Variants</H3>
+    {% for variant in test_asset.variants %}
+    <H4>{{ variant.template_name }} </H4>
+    <table id="t01">
+        <tr>
+            <td>Bitrate</td>
+            <td>{{ variant.template.target_bitrate }}</td>
+        </tr>
+        <tr>
+            <td>Frame Size</td>
+            <td>{{ variant.template.target_width }}:{{ variant.template.target_height }}</td>
+        </tr>
+        <tr>
+            <td>CRF Score for exisitng Tubi VOD Profile:</td>
+            <td>{{ variant.crf }}</td>
+        </tr>
+        <tr>
+            <td>File size for exisitng Tubi VOD Profile:</td>
+            <td>{{ variant.file_size }}</td>
+        </tr>
+        <tr>
+            <td>VMAF Score for exisitng Tubi VOD Profile:</td>
+            <td>{{ variant.vmaf }}</td>
+        </tr>
+    </table>
+    <p></p>
+
+    <div class="row">
+        <div class="column">
+            <img src={{ variant.plots.vmaf_vs_crf }} alt="CRF vs VMAF" style="width:100%">
+        </div>
+        <div class="column">
+            <img src={{ variant.plots.min_vmaf_vs_crf }} alt="CRF vs Min VMAF" style="width:100%">
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="column">
+            <img src={{ variant.plots.transcode_time_vs_crf }} alt="CRF vs Transcode Time" style="width:100%">
+        </div>
+
+        <div class="column">
+            <img src={{  variant.plots.file_size_vs_crf }} alt="CRF vs File Size" style="width:100%">
+        </div>
+    </div>
+
+    <img src={{ variant.multi_crf_time_plot }}>
+    <img src={{ variant.three_crf_time_plot }}>
+    {% endfor %} {% endfor %}
+</body>
+
+</html>

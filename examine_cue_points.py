@@ -1,39 +1,93 @@
 import sys
 import os
 import m3u8
+from jinja2 import Environment, FileSystemLoader
+from PIL import Image
 from os.path import expanduser
 
 import numpy as np
 import ffmpeg_funcs as ffmpeg
 
 
-def grab_thumbnails_sequence(source_path, output_dir, frame_nums, fps):
+def write_html_report(report_data, report_path):
+    jinja_loader = FileSystemLoader('templates')
+    jinja_env = Environment(loader=jinja_loader)
+    jinja_temp = jinja_env.get_template("cue_points.html")
+    output = jinja_temp.render(data=report_data)
+    print(output)
+    with open(report_path, "w") as f:
+        f.write(output)
+
+
+def grab_thumbnails_sequence(source_path, output_dir, cue_points, fps):
+
+    results = []
 
     if not os.path.isdir(output_dir):
         raise Exception(
             'output_directory must be a directory: {}'.format(output_dir))
 
-    output_file = os.path.basename(source_path)
-    output_file = os.path.splitext(output_file)[0]
-    output_file = os.path.join(output_dir, output_file + "_thumbnails.jpg")
+    cursor = Image.new('RGB', (10, 120), color='red')
+    cursor.save(os.path.join(output_dir, 'cursor.jpg'))
+
+    base_output_file = os.path.basename(source_path)
+    base_output_file = os.path.splitext(base_output_file)[0]
+
+    all_grab_frames = []  # all frames so we don't do unnecessary repeats in ffmpeg
+    cue_point_grab_frames = {}  # a list specific to each cue point
+    for cue_point in cue_points:
+        frame_num = int((cue_point * fps) + 0.5)
+        grab_frames = list(range(frame_num - 5, frame_num + 5))
+        cue_point_grab_frames[str(frame_num)] = grab_frames
+        all_grab_frames += grab_frames
 
     output_frames = ffmpeg.ffmpeg_grab_frames(
-        source_path, frame_nums, output_dir,  214, 120, "frame_", fps)
+        source_path, all_grab_frames, output_dir,  214, 120, "", fps)
 
-    # ffmpeg_funcs.ffmpeg_grab_frames() returns relative paths -- let's turn them into absolute
-    output_frames = [os.path.join(output_dir, output_frame)
-                     for output_frame in output_frames]
+    # one image per cue point
+    for cue_point in cue_points:
+        cue_point_info = {}
+        cue_point_info['time'] = cue_point
+        frame_num = int((cue_point * fps) + 0.5)
 
-    ffmpeg.ffmpeg_htile_images(output_frames, output_file)
+        cue_point_info['frame'] = frame_num
+        grab_frames = cue_point_grab_frames[str(frame_num)]
+        # find these specific frames in all of the output_frames
+        capture_frames = []
+        for frame in grab_frames:
+            frame_path = os.path.join(
+                output_dir, str(frame) + ".jpg")
+
+            if os.path.exists(frame_path):
+                capture_frames.append(frame_path)
+
+        capture_frames.insert(5, os.path.join(output_dir, "cursor.jpg"))
+
+        output_file = os.path.join(
+            output_dir, base_output_file + "_" + str(frame_num) + ".jpg")
+
+        ffmpeg.ffmpeg_htile_images(capture_frames, output_file)
+
+        # we want this to be a relative path
+        cue_point_info['thumbnails'] = os.path.split(output_file)[1]
+
+        results.append(cue_point_info)
 
     # we've got the strip, let's delete the component files
     for file in output_frames:
-        os.remove(file)
+        file_path = os.path.join(output_dir, file)
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
-    return output_file
+    return results
 
 
 def main(package_m3u8, cue_points, output_dir):
+
+    base_name = os.path.splitext(os.path.basename(package_m3u8))[0]
+    results_dir = os.path.join(output_dir, base_name)
+    os.mkdir(results_dir)
+
     master_m3u8 = m3u8.load(package_m3u8)
 
     fps = ffmpeg.ffprobe_get_framerate(package_m3u8)
@@ -46,11 +100,14 @@ def main(package_m3u8, cue_points, output_dir):
             test_playlist = variant.absolute_uri
             lowest_width = variant.stream_info.resolution[1]
 
-    for cue_point in cue_points:
-        frame_num = int(cue_point * fps)
-        grabframes = list(range(frame_num - 5, frame_num + 5))
-        grab_thumbnails_sequence(
-            test_playlist, output_dir, grabframes, fps)
+    report_data = {}
+    report_data['filename'] = package_m3u8
+    report_data['cue_points'] = cue_points
+    report_data['cue_points_info'] = grab_thumbnails_sequence(
+        test_playlist, results_dir, cue_points, fps)
+
+    write_html_report(report_data, os.path.join(
+        results_dir, base_name + ".hmtl"))
 
 
 if __name__ == "__main__":
